@@ -1,17 +1,20 @@
-from .EventManager import EventManager
-from .AgeManager import AgeManager
-from typing import Callable, Dict, List, Iterator
-from .Talent import Talent
-import os
-import json
-from .PropertyManager import PropertyManager
-from .TalentManager import TalentManager
-import random
 import itertools
+import json
+import os
+import random
+from typing import Callable, Dict, List, Iterator, Optional
+
+from .AgeManager import AgeManager
+from .EventManager import EventManager
+from .PropertyManager import PropertyManager
+from .Talent import Talent
+from .TalentManager import TalentManager
+
 
 class HandlerException(Exception):
     def __init__(self, msg):
         super().__init__(msg)
+
 
 class Life:
     talent_randomized = 20
@@ -25,63 +28,67 @@ class Life:
             AgeManager.load(json.load(fp))
         with open(os.path.join(datapath, 'events.json'), encoding='utf8') as fp:
             EventManager.load(json.load(fp))
-        #with open(os.path.join(datapath, 'achievement.json'), encoding='utf8') as fp:
+        # with open(os.path.join(datapath, 'achievement.json'), encoding='utf8') as fp:
         #    EventManager.load(json.load(fp))
 
     def _init_managers(self):
-        self.property : PropertyManager = PropertyManager(self)
-        self.talent : TalentManager = TalentManager(self, self._rnd)
-        self.age : AgeManager = AgeManager(self)
-        self.event : EventManager = EventManager(self, self._rnd)
+        self.property: PropertyManager = PropertyManager(self)
+        self.talent: TalentManager = TalentManager(self, self._rnd)
+        self.age: AgeManager = AgeManager(self)
+        self.event: EventManager = EventManager(self, self._rnd)
 
     def __init__(self, rnd=None):
         self._talent_inherit = None
-        self._talenthandler : Callable[[List[Talent]], int] = None
-        self._propertyhandler : Callable[[int], Dict[str, int]] = None
-        self._errorhandler : Callable[[Exception], None] = None
+        self._talent_handler: Optional[Callable[[List[Talent]], int]] = None
+        self._property_handler: Optional[Callable[[int], Dict[str, int]]] = None
+        self._errorhandler: Optional[Callable[[Exception], None]] = None
         self._rnd = rnd or random.Random()
         self._init_managers()
 
-    def restart(self,inhert_num=None):
+    def restart(self, in_her_num=None):
         next_tms = self.property.TMS + 1
-        if inhert_num:
-            self._talent_inherit = self.talent.talents[inhert_num - 1]
+        if in_her_num:
+            self._talent_inherit = self.talent.talents[in_her_num - 1]
         self._init_managers()
         self.property.TMS = next_tms
 
     def _prefix(self) -> Iterator[str]:
-        yield f'【你{self.property.AGE}岁了，颜值:{self.property.CHR} 智力:{self.property.INT} 体力:{self.property.STR} 财富:{self.property.MNY} 快乐:{self.property.SPR}】'
+        yield (f'【你{self.property.AGE}岁了，颜值:{self.property.CHR} 智力:{self.property.INT} 体力:{self.property.STR} '
+               f'财富:{self.property.MNY} 快乐:{self.property.SPR}】')
 
     def setErrorHandler(self, handler: Callable[[Exception], None]) -> None:
-        '''
+        """
         handler recv randomized talents
-        ret chosen talent ids (will be called couple of times)
-        '''
+        ret chosen talent ids (will be called a couple of times)
+        """
         self._errorhandler = handler
+
     def setTalentHandler(self, handler: Callable[[List[Talent]], int]) -> None:
-        '''
+        """
         handler recv randomized talents
-        ret chosen talent ids (will be called couple of times)
-        '''
-        self._talenthandler = handler
-    def setPropertyhandler(self, handler: Callable[[int], List[int]]) -> None:
-        '''
+        ret chosen talent ids (will be called a couple of times)
+        """
+        self._talent_handler = handler
+
+    def setPropertyHandler(self, handler: Callable[[int], List[int]]) -> None:
+        """
         handler recv total props
         ret prop alloc
-        '''
-        self._propertyhandler = handler
+        """
+        self._property_handler = handler
 
-    def _alive(self): 
+    def _alive(self):
         return self.property.LIF > 0
 
     def run(self) -> Iterator[List[str]]:
-        '''
-        returns: information splited by day
-        '''
+        """
+        returns: information split by day
+        """
         while self._alive():
             self.age.grow()
-            for t in self.age.getTalents(): self.talent.addTalent(t)
-            
+            for t in self.age.getTalents():
+                self.talent.addTalent(t)
+
             tal_log = self.talent.updateTalent()
             evt_log = self.event.runEvents(self.age.getEvents())
 
@@ -93,11 +100,11 @@ class Life:
 
         while len(self.talent.talents) < Life.talent_choose:
             try:
-                t = tdict[self._talenthandler(talents)]
+                t = tdict[self._talent_handler(talents)]
                 for t2 in self.talent.talents:
                     if t2.isExclusiveWith(t):
                         return False
-                        # raise HandlerException(f'talent chosen conflict with {t2}')
+                        # raise HandlerException(f' talent chosen conflict with {t2}')
                 self.talent.addTalent(t)
 
                 talents.remove(t)
@@ -109,11 +116,11 @@ class Life:
 
         while True:
             try:
-                eff = self._propertyhandler(self.property.total)
+                eff = self._property_handler(self.property.total)
                 pts = [eff[k] for k in eff]
                 if sum(pts) != self.property.total or max(pts) > 10 or min(pts) < 0:
                     return False
-                    # raise HandlerException(f'property allocation points incorrect')
+                    # raise HandlerException(f' property allocation points incorrect')
                 self.property.apply(eff)
                 break
             except Exception as e:
