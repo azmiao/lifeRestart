@@ -8,6 +8,7 @@ from yuiChyan.service import Service
 from yuiChyan.util import FreqLimiter, DailyNumberLimiter
 from .Life import Life
 from .PicClass import *
+from ...config import NICKNAME
 
 # 每个人的指令冷却 | 默认10秒
 lmt = FreqLimiter(10)
@@ -101,8 +102,8 @@ async def remake(bot, ev: CQEvent):
         data = {
             'type': 'node',
             'data': {
-                'name': '色图机器人',
-                'uin': '2854196310',
+                'name': NICKNAME,
+                'uin': bot.get_self_ids()[0],
                 'content': img
             }
         }
