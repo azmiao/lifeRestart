@@ -103,7 +103,7 @@ async def remake(bot, ev: CQEvent):
             'type': 'node',
             'data': {
                 'name': NICKNAME,
-                'uin': bot.get_self_ids()[0],
+                'uin': bot.get_self_id(),
                 'content': img
             }
         }
